@@ -1,85 +1,94 @@
-#include <stdlib.h>
-#include <stdio.h>
+#ifndef TIMERLOOP_SRC
+#define TIMERLOOP_SRC
+#include <time.h>
+#include <unistd.h>
+#include "priority_queue.c"
+
+/* The important part of time. For priority queue conversions. */
+#define RUN_TIME_MASK 0xffffffff
 
 typedef struct {
-  int priority;
-  void * data;
-} priority_queue_entry;
-
-typedef struct {
-  priority_queue_entry * queue;
-  int len;
-  int size;
-} priority_queue;
-
-typedef struct {
+  priority_queue * queue;
 } timerloop;
 
+typedef struct {
+  time_t run_time;
+  void (* func)(timerloop *, void *);
+  void * ctx;
+} LoopCall;
 
 
-/* Heapify array in queue */
-void keepheap(priority_queue * queue) {
-  priority_queue_entry tmp_e;
-  for(int i=queue->len - 1; i > 0; i--) {
-    int parent_idx = i / 2;
-    if(parent_idx != i && queue->queue[parent_idx].priority > queue->queue[i].priority) {
-      tmp_e = queue->queue[parent_idx];
-      queue->queue[parent_idx] = queue->queue[i];
-      queue->queue[i] = tmp_e;
-    }
+int LoopCall_is_ready(LoopCall * call) {
+  return call->run_time <= time(NULL);
+}
+
+
+int LoopCall_advice_sleep(LoopCall * call) {
+  time_t cur_time = time(NULL);
+  if(call->run_time - cur_time > 0) {
+    return call->run_time - cur_time;
   }
-}
-
-/* Create new instance of queue */
-priority_queue * priority_queue_create(int size) {
-  priority_queue * q = malloc(sizeof(priority_queue));
-  priority_queue_entry * qmem = malloc(sizeof(priority_queue_entry) * size);
-  q->queue = qmem;
-  q->len = 0;
-  q->size = size;
-
-  return q;
-}
-
-/* Destroy instance of queue */
-int priority_queue_destroy(priority_queue * queue) {
-  free(queue->queue);
-  free(queue);
   return 0;
 }
 
-/* Insert new element into queue */
-int priority_queue_insert (priority_queue * queue, priority_queue_entry entry) {
-  if(queue->len < queue->size) {
-    queue->queue = realloc(queue->queue, sizeof(priority_queue_entry) * queue->size * 2);
-  }
-  queue->queue[queue->len] = entry;
-  queue->len++;
-  keepheap(queue);
 
+int timerloop_add_timeout(timerloop * loop, int timeout, void * func, void * ctx) {
+  time_t run_time = (time_t) timeout + time(NULL);
+  LoopCall * call = malloc(sizeof(LoopCall));
+  call->run_time = run_time;
+  call->func = func;
+  call->ctx = ctx;
+  priority_queue_insert(loop->queue, (priority_queue_entry) {(int) (run_time & RUN_TIME_MASK), call});
   return 0;
 }
 
-/* Pop element from queue */
-int priority_queue_pop (priority_queue * queue, priority_queue_entry * res_entry) {
- /* TODO: reallocate */
-  /* if(queue->len < queue->size) { */
-  /*   queue->queue = realloc(queue->queue, sizeof(priority_queue_entry) * queue->size * 2); */
-  /* } */
-  if(queue->len == 0) {
+
+timerloop * timerloop_create() {
+  timerloop * loop = malloc(sizeof(timerloop));
+  loop->queue = priority_queue_create(30);
+  return loop;
+}
+
+int timerloop_destroy(timerloop * loop) {
+  if(priority_queue_destroy(loop->queue) != 0) {
     return -1;
   }
-  *res_entry = queue->queue[0];
-  queue->queue[0] = queue->queue[--queue->len];
-  keepheap(queue);
+  free(loop);
 
   return 0;
 }
 
 
-/* Pretty print queue */
-void priority_queue_print(priority_queue * queue) {
-  for(int i=0; i<queue->len; i++) {
-    printf("queue[%d] = (%d, %s)\n", i, queue->queue[i].priority, (char *)queue->queue[i].data);
+int timerloop_start(timerloop * loop) {
+  priority_queue_entry call;
+  while(priority_queue_pop(loop->queue, &call) == 0) {
+    if(LoopCall_is_ready(call.data)) {
+      LoopCall lcall = *((LoopCall *) call.data);
+      free(((LoopCall *) call.data));
+      lcall.func(loop, lcall.ctx);
+    } else {
+      priority_queue_insert(loop->queue, call);
+      sleep(LoopCall_advice_sleep(call.data));
+    }
   }
+
+  return 0;
 }
+
+/* Tests */
+
+/* void func1(timerloop *, int *); */
+/* void func1(timerloop * loop, int * ctx) { */
+/*   (*ctx)++; */
+/*   printf("%d: Called func1, counter(%p) = %d\n", (int)time(NULL), ctx, *ctx); */
+/*   if(*ctx < 5) { */
+/*     timerloop_add_timeout(loop, 0.5, func1, ctx); */
+/*   } */
+/* } */
+/*   timerloop * loop = timerloop_create(); */
+/*   int counter = 0; */
+/*   func1(loop, &counter); */
+/*   timerloop_start(loop); */
+/*   timerloop_destroy(loop); */
+
+#endif /* TIMERLOOP_SRC */
