@@ -9,6 +9,8 @@
 
 typedef struct {
   priority_queue * queue;
+  int stopped;
+  int gracefully_stopped;
 } timerloop;
 
 typedef struct {
@@ -33,6 +35,9 @@ int LoopCall_advice_sleep(LoopCall * call) {
 
 
 int timerloop_add_timeout(timerloop * loop, int timeout, void * func, void * ctx) {
+  if(loop->gracefully_stopped) {
+    return 1;
+  }
   time_t run_time = (time_t) timeout + time(NULL);
   LoopCall * call = malloc(sizeof(LoopCall));
   call->run_time = run_time;
@@ -46,6 +51,8 @@ int timerloop_add_timeout(timerloop * loop, int timeout, void * func, void * ctx
 timerloop * timerloop_create() {
   timerloop * loop = malloc(sizeof(timerloop));
   loop->queue = priority_queue_create(30);
+  loop->stopped = 0;
+  loop->gracefully_stopped = 0;
   return loop;
 }
 
@@ -61,7 +68,7 @@ int timerloop_destroy(timerloop * loop) {
 
 int timerloop_start(timerloop * loop) {
   priority_queue_entry call;
-  while(priority_queue_pop(loop->queue, &call) == 0) {
+  while(!loop->stopped && priority_queue_pop(loop->queue, &call) == 0) {
     if(LoopCall_is_ready(call.data)) {
       LoopCall lcall = *((LoopCall *) call.data);
       free(((LoopCall *) call.data));
