@@ -1,3 +1,8 @@
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <string.h>
+
 #include "repairer.c"
 
 
@@ -17,6 +22,40 @@ struct tcp_repairer {
 int tcp_repairer_check(repairer * rep) {
   tcp_repairer * trep = (tcp_repairer *) rep;
   printf("We called tcp repairer, hosts_count: %d\n", trep->hosts_count);
+  struct addrinfo * addr, * rp;
+  struct addrinfo hints;
+  memset(&hints, 0, sizeof(struct addrinfo));
+  hints.ai_family = AF_UNSPEC;    /* Allow IPv4 or IPv6 */
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_flags = AI_PASSIVE;    /* For wildcard IP address */
+  hints.ai_protocol = 0;          /* Any protocol */
+  hints.ai_canonname = NULL;
+  hints.ai_addr = NULL;
+  hints.ai_next = NULL;
+  if(getaddrinfo(trep->hosts[0].hostname, trep->hosts[0].port, &hints, &addr) != 0) {
+    printf("Failed to call getaddrinfo\n");
+  }
+  int sfd;
+  for(rp = addr; rp != NULL; rp = rp->ai_next) {
+    printf("Trying addr: %s, protocol: %d, family: %d\n", rp->ai_canonname, rp->ai_protocol, rp->ai_family);
+    sfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+    if(sfd == -1) {
+      continue;
+    }
+    if(connect(sfd, rp->ai_addr, rp->ai_addrlen) != -1) {
+      break; /* Success */
+    }
+    close(sfd);
+  }
+  if(rp == NULL) {
+    printf("Couldn't connect");
+    freeaddrinfo(addr);
+    return 1;
+  }
+  printf("Connected to %s", rp->ai_canonname);
+  freeaddrinfo(addr);
+  close(sfd);
+  
   return 0;
 }
 
