@@ -82,6 +82,19 @@ int timerloop_start(timerloop * loop) {
   return 0;
 }
 
+
+void loop_limiter(timerloop * loop, int * count) {
+  (*count)--;
+  /* printf("Called loop limiter, counter = %d\n", *count); */
+  if(*count <= 0) {
+    /* loop->stopped = 1; */
+    loop->gracefully_stopped = 1;
+    return;
+  }
+  timerloop_add_timeout(loop, 1, loop_limiter, count);
+}
+
+
 /* Tests */
 
 /* void func1(timerloop *, int *); */
