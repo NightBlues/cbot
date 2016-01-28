@@ -2,7 +2,7 @@
 #define REPAIRER
 #include <stdlib.h>
 #include <stdio.h>
-#include "timerloop.c"
+
 
 #define MAX(a,b) ((a) > (b) ? a : b)
 #define MIN(a,b) ((a) < (b) ? a : b)
@@ -52,18 +52,18 @@ int repairer_need_repair(repairer * rep) {
 }
 
 void repairer_repair(repairer * rep) {
-  printf("Command: '%s'\n", rep->repair_command);
+  printf("repairer: Command: '%s'\n", rep->repair_command);
   FILE * repair_proc = popen(rep->repair_command, "r");
   char in_buf[500];
-  printf("Command output:\n");
+  printf("repairer: Command output:\n");
   while(fgets(in_buf, sizeof(in_buf), repair_proc)) {
-    printf("%s", in_buf);
+    printf("repairer: %s", in_buf);
   }
-  printf("Command exited with %d\n", pclose(repair_proc));
+  printf("repairer: Command exited with %d\n", pclose(repair_proc));
 }
 
 void repairer_handle_error(repairer * rep) {
-  printf("Error\n");
+  printf("repairer: Error\n");
   rep->errors_count++;
   if(repairer_need_repair(rep)) {
     repairer_repair(rep);
@@ -71,7 +71,7 @@ void repairer_handle_error(repairer * rep) {
 }
 
 void repairer_handle_success(repairer * rep) {
-  printf("Success\n");
+  printf("repairer: Success\n");
   rep->errors_count = 0;
   rep->__poll_interval = rep->__base_poll_interval;
 }
@@ -87,19 +87,28 @@ int repairer__calc_poll_interval(repairer * rep) {
 }
 
 int repairer_check(repairer * rep) {
-  printf("Checking...\n");
+  printf("repairer: Checking...\n");
   if(rep->_check_func(rep) != 0) {
     repairer_handle_error(rep);
   } else {
     repairer_handle_success(rep);
   }
 
-  return repairer__calc_poll_interval(rep);
+  int res = repairer__calc_poll_interval(rep);
+  printf("repairer: Next check after %d sec\n", res);
+  return res;
 }
 
 
-void loopswinger(timerloop *, repairer *);
-void loopswinger(timerloop * loop, repairer * rep) {
-  timerloop_add_timeout(loop, repairer_check(rep), loopswinger, rep);
+void ev_loop_swinger(EV_P_ struct ev_timer * w, int revents) {
+  repairer * rep = (repairer * )w->data;
+  ev_timer_stop(EV_A_ w);
+  ev_timer_set(w, repairer_check(rep), 0);
+  ev_timer_start(EV_A_ w);
 }
+
+/* void loopswinger(timerloop *, repairer *); */
+/* void loopswinger(timerloop * loop, repairer * rep) { */
+/*   timerloop_add_timeout(loop, repairer_check(rep), loopswinger, rep); */
+/* } */
 #endif /* repairer.c */

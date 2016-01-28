@@ -2,6 +2,7 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "repairer.c"
 
@@ -21,7 +22,7 @@ struct tcp_repairer {
 
 int tcp_repairer_check(repairer * rep) {
   tcp_repairer * trep = (tcp_repairer *) rep;
-  printf("We called tcp repairer, hosts_count: %d\n", trep->hosts_count);
+  printf("tcp_repairer: We called tcp repairer, hosts_count: %d\n", trep->hosts_count);
   struct addrinfo * addr, * rp;
   struct addrinfo hints;
   memset(&hints, 0, sizeof(struct addrinfo));
@@ -33,11 +34,11 @@ int tcp_repairer_check(repairer * rep) {
   hints.ai_addr = NULL;
   hints.ai_next = NULL;
   if(getaddrinfo(trep->hosts[0].hostname, trep->hosts[0].port, &hints, &addr) != 0) {
-    printf("Failed to call getaddrinfo\n");
+    printf("tcp_repairer: Failed to call getaddrinfo\n");
   }
   int sfd;
   for(rp = addr; rp != NULL; rp = rp->ai_next) {
-    printf("Trying addr: %s, protocol: %d, family: %d\n", rp->ai_canonname, rp->ai_protocol, rp->ai_family);
+    printf("tcp_repairer: Trying addr: %s, protocol: %d, family: %d\n", rp->ai_canonname, rp->ai_protocol, rp->ai_family);
     sfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
     if(sfd == -1) {
       continue;
@@ -48,11 +49,11 @@ int tcp_repairer_check(repairer * rep) {
     close(sfd);
   }
   if(rp == NULL) {
-    printf("Couldn't connect");
+    printf("tcp_repairer: Couldn't connect\n");
     freeaddrinfo(addr);
     return 1;
   }
-  printf("Connected to %s", rp->ai_canonname);
+  printf("tcp_repairer: Connected to %s\n", rp->ai_canonname);
   freeaddrinfo(addr);
   close(sfd);
   
