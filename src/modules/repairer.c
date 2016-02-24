@@ -1,7 +1,8 @@
-#ifndef REPAIRER
-#define REPAIRER
+#pragma once
 #include <stdlib.h>
 #include <stdio.h>
+
+#include <ev.h>
 
 
 #define MAX(a,b) ((a) > (b) ? a : b)
@@ -111,4 +112,3 @@ void ev_loop_swinger(EV_P_ struct ev_timer * w, int revents) {
 /* void loopswinger(timerloop * loop, repairer * rep) { */
 /*   timerloop_add_timeout(loop, repairer_check(rep), loopswinger, rep); */
 /* } */
-#endif /* repairer.c */

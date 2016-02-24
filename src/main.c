@@ -1,7 +1,8 @@
 #include <stdio.h>
+
 #include <ev.h>
-#include "tcp_repairer.c"
-#include "messaging.c"
+
+#include "modules/tcp_repairer.c"
 
 
 void stdin_cb(EV_P_ ev_io * w, int revents) {
@@ -30,14 +31,14 @@ int main() {
   ev_io_init(&loop_stdin_watcher, stdin_cb, 0, EV_READ);
   ev_io_start(loop, &loop_stdin_watcher);
 
-  messaging * msg = start_messaging(loop, "tcp://localhost:32535");
+  /* messaging * msg = start_messaging(loop, "tcp://localhost:32535"); */
   
   ev_loop(loop, 0);
 
   if(repairer_destroy((repairer *) rep) != 0) {
     printf("Couldn't free memory for repairer\n");
   }
-  stop_messaging(loop, msg);
+  /* stop_messaging(loop, msg); */
   
   return 0;
 }
