@@ -1,14 +1,19 @@
 .PHONY: build
 
 CC=gcc -std=gnu11
+LIBCHECK=$(shell pkg-config --cflags --libs check)
 LIB_messaging_FILES=src/messaging/message.c
 LIB_modules_FILES=src/modules/repairer.c src/modules/tcp_repairer.c
 
-build: libmessaging.a libmodules.a
-	$(CC) src/main.c -lev $^ -o cbot
+build: libmessaging.a libmodules.a src/main.o
+	$(CC) $^ -lev -o cbot
+
+test-messaging: tests/check_messaging.o libmessaging.a
+	$(CC) $^ ${LIBCHECK} -o $@
+	./$@
 
 clean:
-	rm -rf *.o *.a cbot
+	rm -rf *.o *.a cbot test-*
 	find -name *.o -exec rm -rf {} \;
 
 define libgen
