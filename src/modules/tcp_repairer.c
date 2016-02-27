@@ -1,11 +1,11 @@
 #include <netdb.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <gc.h>
 
 #include "tcp_repairer.h"
 
@@ -55,7 +55,7 @@ int tcp_repairer_check(repairer * rep) {
 tcp_repairer * tcp_repairer_create(struct hosts * hosts, int hosts_count, char * repair_command, int poll_interval) {
   repairer * base = repairer_create(repair_command, poll_interval);
   base->_check_func = tcp_repairer_check;
-  tcp_repairer * res = realloc(base, sizeof(tcp_repairer));
+  tcp_repairer * res = GC_realloc(base, sizeof(tcp_repairer));
   res->hosts = hosts;
   res->hosts_count = hosts_count;
 

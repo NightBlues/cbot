@@ -1,4 +1,4 @@
-#include <stdlib.h>
+#include <gc.h>
 #include <stdio.h>
 
 #include "repairer.h"
@@ -10,7 +10,7 @@ int repairer_dumb_check(repairer * rep) {
 
 
 repairer * repairer_create(char * repair_command, int poll_interval) {
-  repairer * rep = malloc(sizeof(repairer));
+  repairer * rep = GC_malloc(sizeof(repairer));
   rep->repair_command = repair_command;
   rep->__poll_interval = rep->__base_poll_interval = poll_interval;
   rep->poll_min_interval = 1;
@@ -20,12 +20,6 @@ repairer * repairer_create(char * repair_command, int poll_interval) {
   rep->_check_func = repairer_dumb_check;
 
   return rep;
-}
-
-
-int repairer_destroy(repairer * rep) {
-  free(rep);
-  return 0;
 }
 
 

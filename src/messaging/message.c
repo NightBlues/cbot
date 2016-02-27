@@ -1,4 +1,4 @@
-#include <stdlib.h>
+#include <gc.h>
 #include <msgpack.h>
 
 #include "message.h"
@@ -8,7 +8,7 @@
 
 
 message * message_create(message_type type, message_action action) {
-  message * mess = malloc(sizeof(message));
+  message * mess = GC_malloc(sizeof(message));
   mess->type = type;
   mess->action = action;
   mess->to_msgpack = message_to_msgpack_base;
@@ -45,7 +45,7 @@ int message_encode(message * msg, char ** result, int * len) {
     ret_code = 1;
   } else {
     msgpack_pack_object(&packer, packed_obj);
-    *result = malloc(sbuf.size);
+    *result = GC_malloc(sbuf.size);
     memcpy(*result, sbuf.data, sbuf.size);
     *len = sbuf.size;
   }
@@ -59,8 +59,7 @@ int message_encode(message * msg, char ** result, int * len) {
 int message_to_msgpack_base(message * msg, msgpack_object * obj) {
   obj->type = MSGPACK_OBJECT_ARRAY;
   obj->via.array.size = 3;
-  /* TODO: use libgc or free it */
-  obj->via.array.ptr = malloc(sizeof(msgpack_object) * 3);
+  obj->via.array.ptr = GC_malloc(sizeof(msgpack_object) * 3);
   obj->via.array.ptr[0].type = MSGPACK_OBJECT_POSITIVE_INTEGER;
   obj->via.array.ptr[0].via.u64 = msg->type;
   obj->via.array.ptr[1].type = MSGPACK_OBJECT_POSITIVE_INTEGER;

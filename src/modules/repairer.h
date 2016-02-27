@@ -21,7 +21,6 @@ struct repairer {
 
 repairer * repairer_create(char * repair_command, int poll_interval);
 int repairer_dumb_check(repairer * rep);
-int repairer_destroy(repairer * rep);
 int repairer_need_repair(repairer * rep);
 void repairer_repair(repairer * rep);
 void repairer_handle_error(repairer * rep);

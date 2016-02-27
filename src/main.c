@@ -36,9 +36,6 @@ int main() {
   
   ev_loop(loop, 0);
 
-  if(repairer_destroy((repairer *) rep) != 0) {
-    printf("Couldn't free memory for repairer\n");
-  }
   /* stop_messaging(loop, msg); */
   
   return 0;
