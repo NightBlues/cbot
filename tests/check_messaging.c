@@ -1,7 +1,17 @@
 #include <stdlib.h>
+#include <string.h>
 #include <check.h>
 
 #include "../src/messaging/message.h"
+
+void print(char const* buf, unsigned int len)
+{
+    size_t i = 0;
+    for(; i < len ; ++i) {
+        printf("\\x%02x", 0xff & buf[i]);
+    }
+    printf("\n");
+}
 
 
 START_TEST(test_message_cksum)
@@ -15,12 +25,30 @@ START_TEST(test_message_cksum)
 END_TEST
 
 
+START_TEST(test_message_encode)
+{
+  message * msg = message_create(MESSAGE_REQUEST, MESSAGE_DISCOVER);
+  char * res;
+  int len;
+  ck_assert_int_eq(message_encode(msg, &res, &len), 0);
+  ck_assert_int_eq(len, 4);
+  ck_assert_int_eq(memcmp(res, "\x93\x00\x02\xc0", len), 0);
+
+  msg = message_create_echo(MESSAGE_REQUEST, "hey", 3);
+  ck_assert_int_eq(message_encode(msg, &res, &len), 0);
+  ck_assert_int_eq(len, 7);
+  ck_assert_int_eq(memcmp(res, "\x93\x00\x01\xa3hey", len), 0);
+}
+END_TEST
+
+
 Suite * message_suite(void) {
   Suite * s;
   TCase * tc_core;
   s = suite_create("Message");
   tc_core = tcase_create("Core");
   tcase_add_test(tc_core, test_message_cksum);
+  tcase_add_test(tc_core, test_message_encode);
   suite_add_tcase(s, tc_core);
 
   return s;

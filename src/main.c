@@ -1,8 +1,9 @@
 #include <stdio.h>
+#include <unistd.h>
 
 #include <ev.h>
 
-#include "modules/tcp_repairer.c"
+#include "modules/tcp_repairer.h"
 
 
 void stdin_cb(EV_P_ ev_io * w, int revents) {

@@ -1,23 +1,14 @@
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <netdb.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 #include <unistd.h>
 
-#include "repairer.c"
 
+#include "tcp_repairer.h"
 
-struct hosts {
-    char hostname[255];
-    char port[6];
-};
-
-typedef struct tcp_repairer tcp_repairer;
-struct tcp_repairer {
-  repairer base;
-  struct hosts * hosts;
-  int hosts_count;
-};
 
 
 int tcp_repairer_check(repairer * rep) {

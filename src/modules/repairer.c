@@ -1,25 +1,7 @@
-#pragma once
 #include <stdlib.h>
 #include <stdio.h>
 
-#include <ev.h>
-
-
-#define MAX(a,b) ((a) > (b) ? a : b)
-#define MIN(a,b) ((a) < (b) ? a : b)
-
-
-typedef struct repairer repairer;
-struct repairer {
-  char * repair_command;
-  int __poll_interval;
-  int __base_poll_interval;
-  int poll_min_interval;
-  int max_errors_count;
-  int repair_timeout;
-  int errors_count;
-  int (* _check_func)(repairer *);
-};
+#include "repairer.h"
 
 
 int repairer_dumb_check(repairer * rep) {
