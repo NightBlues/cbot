@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include <gc.h>
 #include <msgpack.h>
 
@@ -71,11 +73,10 @@ int message_to_msgpack_base(message * msg, msgpack_object * obj) {
 
 
 
-message * message_create_echo(message_type type, char * text, int len) {
+message * message_create_echo(message_type type, char * text) {
   message * mess = message_create(type, MESSAGE_ECHO);
   mess->to_msgpack = message_to_msgpack_echo;
-  mess->data.echo.len = len;
-  mess->data.echo.text = text;
+  mess->data.echo = text;
 
   return mess;
 }
@@ -85,8 +86,37 @@ int message_to_msgpack_echo(message * msg, msgpack_object * obj) {
   if(res == 0) {
     msgpack_object * data = &obj->via.array.ptr[2];
     data->type = MSGPACK_OBJECT_STR;
-    data->via.str.size = msg->data.echo.len;
-    data->via.str.ptr = msg->data.echo.text;
+    data->via.str.size = strlen(msg->data.echo);
+    data->via.str.ptr = msg->data.echo;
+  }
+
+  return res;
+}
+
+
+message * message_create_identity(message_type type, char * name, int port) {
+  message * mess = message_create(type, MESSAGE_IDENTITY);
+  mess->to_msgpack = message_to_msgpack_identity;
+  if(type == MESSAGE_RESPONSE) {
+    mess->data.identity.port = port;
+    mess->data.identity.name = name;
+  }
+
+  return mess;
+}
+
+int message_to_msgpack_identity(message * msg, msgpack_object * obj) {
+  int res = message_to_msgpack_base(msg, obj);
+  if(res == 0 && msg->type == MESSAGE_RESPONSE) {
+    msgpack_object * data = &obj->via.array.ptr[2];
+    data->type = MSGPACK_OBJECT_ARRAY;
+    data->via.array.size = 2;
+    data->via.array.ptr = GC_malloc(sizeof(msgpack_object)*2);
+    data->via.array.ptr[0].type = MSGPACK_OBJECT_STR;
+    data->via.array.ptr[0].via.str.size = strlen(msg->data.identity.name);
+    data->via.array.ptr[0].via.str.ptr = msg->data.identity.name;
+    data->via.array.ptr[1].type = MSGPACK_OBJECT_POSITIVE_INTEGER;
+    data->via.array.ptr[1].via.u64 = msg->data.identity.port;
   }
 
   return res;

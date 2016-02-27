@@ -27,17 +27,35 @@ END_TEST
 
 START_TEST(test_message_encode)
 {
-  message * msg = message_create(MESSAGE_REQUEST, MESSAGE_DISCOVER);
+  message * msg;
   char * res;
   int len;
+
+  msg = message_create_echo(MESSAGE_REQUEST, "hey");
+  ck_assert_int_eq(message_encode(msg, &res, &len), 0);
+  ck_assert_int_eq(len, 7);
+  ck_assert_int_eq(memcmp(res, "\x93\x00\x01\xa3hey", len), 0);
+
+  msg = message_create_echo(MESSAGE_RESPONSE, "hey");
+  ck_assert_int_eq(message_encode(msg, &res, &len), 0);
+  ck_assert_int_eq(len, 7);
+  ck_assert_int_eq(memcmp(res, "\x93\x01\x01\xa3hey", len), 0);
+
+  msg = message_create_identity(MESSAGE_REQUEST, NULL, 0);
+  ck_assert_int_eq(message_encode(msg, &res, &len), 0);
+  ck_assert_int_eq(len, 4);
+  ck_assert_int_eq(memcmp(res, "\x93\x00\x00\xc0", len), 0);
+
+  msg = message_create_identity(MESSAGE_RESPONSE, "localhost", 10000);
+  ck_assert_int_eq(message_encode(msg, &res, &len), 0);
+  ck_assert_int_eq(len, 17);
+  ck_assert_int_eq(memcmp(res, "\x93\x01\x00\x92\xa9localhost\xcd'\x10", len), 0);
+
+  msg = message_create(MESSAGE_REQUEST, MESSAGE_DISCOVER);
   ck_assert_int_eq(message_encode(msg, &res, &len), 0);
   ck_assert_int_eq(len, 4);
   ck_assert_int_eq(memcmp(res, "\x93\x00\x02\xc0", len), 0);
 
-  msg = message_create_echo(MESSAGE_REQUEST, "hey", 3);
-  ck_assert_int_eq(message_encode(msg, &res, &len), 0);
-  ck_assert_int_eq(len, 7);
-  ck_assert_int_eq(memcmp(res, "\x93\x00\x01\xa3hey", len), 0);
 }
 END_TEST
 

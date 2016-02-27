@@ -14,10 +14,10 @@ typedef enum {
 } message_action;
 
 
-typedef struct message_data_echo {
-  int len;
-  char * text;
-} message_data_echo;
+typedef struct {
+  int port;
+  char * name;
+} message_data_identity;
 
 
 typedef struct message message;
@@ -26,7 +26,8 @@ struct message {
   message_action action;
   int (* to_msgpack)(message*, msgpack_object*);
   union {
-    message_data_echo echo;
+    char * echo;
+    message_data_identity identity;
   } data;
 };
 
@@ -39,5 +40,9 @@ int message_read(int sock, void ** result);
 int message_send(void * msg);
 int message_to_msgpack_base(message *, msgpack_object *);
 
-message * message_create_echo(message_type type, char * text, int len);
+message * message_create_echo(message_type type, char * text);
 int message_to_msgpack_echo(message *, msgpack_object *);
+
+message * message_create_identity(message_type type, char * name, int port);
+int message_to_msgpack_identity(message *, msgpack_object *);
+
