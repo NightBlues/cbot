@@ -31,30 +31,45 @@ START_TEST(test_message_encode)
   char * res;
   int len;
 
-  msg = message_create_echo(MESSAGE_REQUEST, "hey");
+  msg = message_create_echo(MESSAGE_TYPE_REQUEST, "hey");
   ck_assert_int_eq(message_encode(msg, &res, &len), 0);
   ck_assert_int_eq(len, 7);
   ck_assert_int_eq(memcmp(res, "\x93\x00\x01\xa3hey", len), 0);
+  msg = message_decode("\x93\x00\x01\xa3hey", 7);
+  ck_assert(msg != NULL);
+  ck_assert_str_eq(msg->data.echo, "hey");
 
-  msg = message_create_echo(MESSAGE_RESPONSE, "hey");
+  msg = message_create_echo(MESSAGE_TYPE_RESPONSE, "hey");
   ck_assert_int_eq(message_encode(msg, &res, &len), 0);
   ck_assert_int_eq(len, 7);
   ck_assert_int_eq(memcmp(res, "\x93\x01\x01\xa3hey", len), 0);
+  msg = message_decode("\x93\x01\x01\xa3hey", 7);
+  ck_assert(msg != NULL);
+  ck_assert_str_eq(msg->data.echo, "hey");
 
-  msg = message_create_identity(MESSAGE_REQUEST, NULL, 0);
+  msg = message_create_identity(MESSAGE_TYPE_REQUEST, NULL, 0);
   ck_assert_int_eq(message_encode(msg, &res, &len), 0);
   ck_assert_int_eq(len, 4);
   ck_assert_int_eq(memcmp(res, "\x93\x00\x00\xc0", len), 0);
 
-  msg = message_create_identity(MESSAGE_RESPONSE, "localhost", 10000);
+  msg = message_create_identity(MESSAGE_TYPE_RESPONSE, "localhost", 10000);
   ck_assert_int_eq(message_encode(msg, &res, &len), 0);
   ck_assert_int_eq(len, 17);
   ck_assert_int_eq(memcmp(res, "\x93\x01\x00\x92\xa9localhost\xcd'\x10", len), 0);
+  msg = message_decode("\x93\x01\x00\x92\xa9localhost\xcd'\x10", 17);
+  ck_assert(msg != NULL);
+  /* ck_assert_int_eq(msg->data.identity.port , 10000); */
+  /* ck_assert_str_eq(msg->data.identity.name, "localhost"); */
 
-  msg = message_create(MESSAGE_REQUEST, MESSAGE_DISCOVER);
+  msg = message_create(MESSAGE_TYPE_REQUEST, MESSAGE_ACTION_DISCOVER);
   ck_assert_int_eq(message_encode(msg, &res, &len), 0);
   ck_assert_int_eq(len, 4);
   ck_assert_int_eq(memcmp(res, "\x93\x00\x02\xc0", len), 0);
+  msg = message_decode("\x93\x00\x02\xc0", 4);
+  ck_assert(msg != NULL);
+  ck_assert_int_eq(msg->type, MESSAGE_TYPE_REQUEST);
+  ck_assert_int_eq(msg->action, MESSAGE_ACTION_DISCOVER);
+
 
 }
 END_TEST
