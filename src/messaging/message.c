@@ -1,4 +1,6 @@
 #include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 
 #include <gc.h>
 #include <msgpack.h>
@@ -97,6 +99,26 @@ int message_encode(message * msg, char ** result, int * len) {
   msgpack_sbuffer_destroy(&sbuf);
 
   return ret_code;
+}
+
+
+int message_read(int sock, message ** result) {
+  char * header_buf = GC_malloc(HEADER_SIZE);
+  if(recv(sock, header_buf, HEADER_SIZE, MSG_DONTWAIT) != HEADER_SIZE) {
+    return RET_MESSAGE_HEADER_ERROR;
+  }
+  int size = charsToInt(header_buf);
+  int cksum = charsToInt(header_buf + 4);
+  char * msg_buf = GC_malloc(size);
+  if(recv(sock, msg_buf, size, MSG_DONTWAIT) != size) {
+    return RET_MESSAGE_RECEIVE_ERROR;
+  }
+  *result = message_decode(msg_buf, size);
+  if(*result == NULL) {
+    return RET_MESSAGE_DECODE_ERROR;
+  }
+
+  return RET_OK;
 }
 
 

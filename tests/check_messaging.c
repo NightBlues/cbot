@@ -1,5 +1,8 @@
+#include <sys/types.h>
+#include <sys/socket.h>
 #include <stdlib.h>
 #include <string.h>
+#include <gc.h>
 #include <check.h>
 
 #include "../src/messaging/message.h"
@@ -75,6 +78,26 @@ START_TEST(test_message_encode)
 END_TEST
 
 
+START_TEST(test_message_read) {
+  message * msg;
+  int * sock = GC_malloc(sizeof(int) * 2);
+  socketpair(AF_UNIX, SOCK_STREAM, 0, sock);
+  int size = HEADER_SIZE + sizeof("\x93\x00\x01\xa3hey");
+  char * src_buf = GC_malloc(size);
+  memcpy(src_buf, "\x00\x00\x00\x07\x00\x00\x00\x00", HEADER_SIZE);
+  memcpy(src_buf + HEADER_SIZE, "\x93\x00\x01\xa3hey", sizeof("\x93\x00\x01\xa3hey"));
+
+  ck_assert_int_eq(message_read(sock[0], &msg), RET_MESSAGE_HEADER_ERROR);
+  send(sock[1], src_buf, HEADER_SIZE, MSG_DONTWAIT);
+  ck_assert_int_eq(message_read(sock[0], &msg), RET_MESSAGE_RECEIVE_ERROR);
+  send(sock[1], src_buf, size, MSG_DONTWAIT);
+  ck_assert_int_eq(message_read(sock[0], &msg), RET_OK);
+  ck_assert(msg != NULL);
+  ck_assert_str_eq(msg->data.echo, "hey");
+}
+END_TEST
+
+
 Suite * message_suite(void) {
   Suite * s;
   TCase * tc_core;
@@ -82,6 +105,7 @@ Suite * message_suite(void) {
   tc_core = tcase_create("Core");
   tcase_add_test(tc_core, test_message_cksum);
   tcase_add_test(tc_core, test_message_encode);
+  tcase_add_test(tc_core, test_message_read);
   suite_add_tcase(s, tc_core);
 
   return s;

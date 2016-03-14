@@ -29,4 +29,4 @@ endef
 $(foreach lib,messaging modules,$(eval $(call libgen,$(lib))))
 
 %.o: %.c
-	$(CC) -c $< -o $@
+	$(CC) ${LIBGC} ${LIBEV} ${LIBMSGPACK} -c $< -o $@

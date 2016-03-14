@@ -5,7 +5,10 @@
 
 #define RET_MESSAGE_ENCODE_ERROR 30
 #define RET_MESSAGE_DECODE_ERROR 31
+#define RET_MESSAGE_HEADER_ERROR 32
+#define RET_MESSAGE_RECEIVE_ERROR 33
 #define HEADER_SIZE 8
+
 
 typedef enum {
   MESSAGE_TYPE_REQUEST = 0,
@@ -41,15 +44,14 @@ message * message_create(message_type type, message_action action);
 message * message_decode(char * data, int len);
 int message_encode(message * msg, char ** result, int * len);
 int message_cksum(char * data, int len);
-int message_read(int sock, void ** result);
-int message_send(void * msg);
+int message_read(int sock, message ** result);
+int message_send(message * msg);
 int message_from_msgpack_base(msgpack_object *, message **);
 int message_to_msgpack_base(message *, msgpack_object *);
 
 message * message_create_echo(message_type type, char * text);
 int message_from_msgpack_echo(msgpack_object *, message *);
 int message_to_msgpack_echo(message *, msgpack_object *);
-
 
 message * message_create_identity(message_type type, char * name, int port);
 int message_from_msgpack_identity(msgpack_object *, message *);
