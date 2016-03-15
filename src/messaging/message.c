@@ -7,8 +7,6 @@
 
 #include "message.h"
 
-#define addByte(data, i) ((char *)data)[i] << (3 - i) * 0x8
-#define charsToInt(data) addByte(data, 3) | addByte(data, 2) | addByte(data, 1) | addByte(data, 0)
 #define msg_array_(obj, i) obj->via.array.ptr[i]
 #define msg_array(obj, i) obj.via.array.ptr[i]
 #define msg_int_(obj) obj->via.u64
@@ -44,13 +42,13 @@ message * message_create(message_type type, message_action action) {
   return mess;
 }
 
-int message_cksum(char * data, int len) {
-  int res = 0;
-  int buf = 0;
+uint32_t message_cksum(char * data, uint32_t len) {
+  uint32_t res = 0;
+  uint32_t buf = 0;
   int garbage_size = (4 - (len % 4)) * 0x8;
 
   for(int i=0; i < len; i+=4) {
-    buf = charsToInt(data + i);
+    buf = ntohl(*((uint32_t *)(data + i)));
     /* we should remove garbage on the last step */
     if(i + 4 >= len) {
       buf = buf >> garbage_size << garbage_size;
@@ -62,7 +60,7 @@ int message_cksum(char * data, int len) {
 }
 
 
-message * message_decode(char * data, int len) {
+message * message_decode(char * data, uint32_t len) {
   message * msg = NULL;
   msgpack_zone mempool;
   msgpack_zone_init(&mempool, MSGPACK_ZONE_CHUNK_SIZE);
@@ -80,7 +78,7 @@ message * message_decode(char * data, int len) {
 }
 
 
-int message_encode(message * msg, char ** result, int * len) {
+int message_encode(message * msg, char ** result, uint32_t * len) {
   int ret_code = RET_OK;
   msgpack_sbuffer sbuf;
   msgpack_sbuffer_init(&sbuf);
@@ -107,15 +105,42 @@ int message_read(int sock, message ** result) {
   if(recv(sock, header_buf, HEADER_SIZE, MSG_DONTWAIT) != HEADER_SIZE) {
     return RET_MESSAGE_HEADER_ERROR;
   }
-  int size = charsToInt(header_buf);
-  int cksum = charsToInt(header_buf + 4);
+  uint32_t size = ntohl(*((uint32_t *)header_buf));
+  uint32_t cksum = ntohl(*((uint32_t *)(header_buf + 4)));
   char * msg_buf = GC_malloc(size);
   if(recv(sock, msg_buf, size, MSG_DONTWAIT) != size) {
+    return RET_MESSAGE_RECEIVE_ERROR;
+  }
+
+  if(message_cksum(msg_buf, size) != cksum) {
     return RET_MESSAGE_RECEIVE_ERROR;
   }
   *result = message_decode(msg_buf, size);
   if(*result == NULL) {
     return RET_MESSAGE_DECODE_ERROR;
+  }
+
+  return RET_OK;
+}
+
+int message_send(int sock, message * msg) {
+  char * header_buf = GC_malloc(HEADER_SIZE);
+  char * data;
+  uint32_t len;
+  if(message_encode(msg, &data, &len) != RET_OK) {
+    return RET_MESSAGE_ENCODE_ERROR;
+  }
+
+  uint32_t len_net = htonl(len);
+  memcpy(header_buf, (char *)&len_net, 4);
+  uint32_t cksum = htonl(message_cksum(data, len));
+  memcpy(header_buf + 4, (char *)&cksum, 4);
+
+  if(send(sock, header_buf, HEADER_SIZE, MSG_DONTWAIT) != HEADER_SIZE) {
+    return RET_MESSAGE_SEND_ERROR;
+  }
+  if(send(sock, data, len, MSG_DONTWAIT) != len) {
+    return RET_MESSAGE_SEND_ERROR;
   }
 
   return RET_OK;

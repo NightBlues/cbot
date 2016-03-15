@@ -32,7 +32,7 @@ START_TEST(test_message_encode)
 {
   message * msg;
   char * res;
-  int len;
+  uint32_t len;
 
   msg = message_create_echo(MESSAGE_TYPE_REQUEST, "hey");
   ck_assert_int_eq(message_encode(msg, &res, &len), 0);
@@ -82,9 +82,9 @@ START_TEST(test_message_read) {
   message * msg;
   int * sock = GC_malloc(sizeof(int) * 2);
   socketpair(AF_UNIX, SOCK_STREAM, 0, sock);
-  int size = HEADER_SIZE + sizeof("\x93\x00\x01\xa3hey");
+  uint32_t size = HEADER_SIZE + sizeof("\x93\x00\x01\xa3hey");
   char * src_buf = GC_malloc(size);
-  memcpy(src_buf, "\x00\x00\x00\x07\x00\x00\x00\x00", HEADER_SIZE);
+  memcpy(src_buf, "\x00\x00\x00\x07\xfb\x65\x78\xa3", HEADER_SIZE);
   memcpy(src_buf + HEADER_SIZE, "\x93\x00\x01\xa3hey", sizeof("\x93\x00\x01\xa3hey"));
 
   ck_assert_int_eq(message_read(sock[0], &msg), RET_MESSAGE_HEADER_ERROR);
@@ -98,6 +98,35 @@ START_TEST(test_message_read) {
 END_TEST
 
 
+START_TEST(test_message_send) {
+  message * msg;
+  int * sock = GC_malloc(sizeof(int) * 2);
+  socketpair(AF_UNIX, SOCK_STREAM, 0, sock);
+  msg = message_create_echo(MESSAGE_TYPE_REQUEST, "hey");
+  message_send(sock[0], msg);
+  char * header_buf = GC_malloc(8);
+  char * data = GC_malloc(7);
+  ck_assert_int_eq(recv(sock[1], header_buf, 8, MSG_DONTWAIT), 8);
+  ck_assert_int_eq(memcmp(header_buf, "\x00\x00\x00\x07\xfb\x65\x78\xa3", 8), 0);
+  ck_assert_int_eq(recv(sock[1], data, 7, MSG_DONTWAIT), 7);
+  ck_assert_int_eq(memcmp(data, "\x93\x00\x01\xa3hey", 7), 0);
+}
+END_TEST
+
+
+START_TEST(test_message_send_read) {
+  message * msg, * msg2;
+  int * sock = GC_malloc(sizeof(int) * 2);
+  socketpair(AF_UNIX, SOCK_STREAM, 0, sock);
+  msg = message_create_echo(MESSAGE_TYPE_REQUEST, "hey");
+  message_send(sock[0], msg);
+  ck_assert_int_eq(message_read(sock[1], &msg2), RET_OK);
+  ck_assert(msg2 != NULL);
+  ck_assert_str_eq(msg2->data.echo, "hey");
+}
+END_TEST
+
+
 Suite * message_suite(void) {
   Suite * s;
   TCase * tc_core;
@@ -106,6 +135,8 @@ Suite * message_suite(void) {
   tcase_add_test(tc_core, test_message_cksum);
   tcase_add_test(tc_core, test_message_encode);
   tcase_add_test(tc_core, test_message_read);
+  tcase_add_test(tc_core, test_message_send);
+  tcase_add_test(tc_core, test_message_send_read);
   suite_add_tcase(s, tc_core);
 
   return s;
