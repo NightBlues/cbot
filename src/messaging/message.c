@@ -47,7 +47,7 @@ uint32_t message_cksum(char * data, uint32_t len) {
   uint32_t buf = 0;
   int garbage_size = (4 - (len % 4)) * 0x8;
 
-  for(int i=0; i < len; i+=4) {
+  for(uint32_t i=0; i < len; i+=4) {
     buf = ntohl(*((uint32_t *)(data + i)));
     /* we should remove garbage on the last step */
     if(i + 4 >= len) {

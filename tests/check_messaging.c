@@ -6,6 +6,7 @@
 #include <check.h>
 
 #include "../src/messaging/message.h"
+#include "../src/messaging/peer.h"
 
 void print(char const* buf, unsigned int len)
 {
@@ -127,6 +128,52 @@ START_TEST(test_message_send_read) {
 END_TEST
 
 
+START_TEST(test_peer_requests) {
+  /* printf("Called peer test\n"); */
+  message * msg;
+  peer * localhost;
+
+  localhost = peer_create("localhost", "localhost");
+  ck_assert_int_eq(peer_add_request(localhost, \
+      message_create_echo(MESSAGE_TYPE_REQUEST, "hey")), RET_OK);
+  ck_assert_int_eq(peer_add_request(localhost, \
+      message_create_echo(MESSAGE_TYPE_REQUEST, "mess2")), RET_OK);
+  ck_assert_int_eq(peer_add_request(localhost, \
+      message_create_echo(MESSAGE_TYPE_REQUEST, "message3")), RET_OK);
+  ck_assert_int_eq(peer_pop_request(localhost, &msg), RET_OK);
+  ck_assert(msg != NULL);
+  ck_assert_str_eq(msg->data.echo, "hey");
+  ck_assert_int_eq(peer_pop_request(localhost, &msg), RET_OK);
+  ck_assert(msg != NULL);
+  ck_assert_str_eq(msg->data.echo, "mess2");
+  ck_assert_int_eq(peer_pop_request(localhost, &msg), RET_OK);
+  ck_assert(msg != NULL);
+  ck_assert_str_eq(msg->data.echo, "message3");
+}
+END_TEST
+
+START_TEST(test_peer_to_string) {
+  peer * p = peer_create("local", "127.0.0.1");
+  ck_assert_str_eq(peer_to_string(p), "Peer<local>(127.0.0.1, -1)");
+}
+END_TEST
+
+
+START_TEST(test_peer_split_host) {
+  char * host;
+  int port;
+
+  ck_assert_int_eq(peer_split_host("localhost:8000", &host, &port), 0);
+  ck_assert_int_eq(port, 8000);
+  ck_assert(host != NULL);
+  ck_assert_str_eq(host, "localhost");
+  ck_assert_int_eq(peer_split_host("*:8000", &host, &port), 0);
+  ck_assert_int_eq(port, 8000);
+  ck_assert(host == NULL);
+}
+END_TEST
+
+
 Suite * message_suite(void) {
   Suite * s;
   TCase * tc_core;
@@ -142,17 +189,33 @@ Suite * message_suite(void) {
   return s;
 }
 
+Suite * peer_suite(void) {
+  Suite * s;
+  TCase * tc_core;
+  s = suite_create("Peer");
+  tc_core = tcase_create("Core");
+  tcase_add_test(tc_core, test_peer_requests);
+  tcase_add_test(tc_core, test_peer_to_string);
+  tcase_add_test(tc_core, test_peer_split_host);
+  suite_add_tcase(s, tc_core);
+
+  return s;
+}
+
+#define run_suite(suite_runner, suite, number_failed)        \
+  suite_runner = srunner_create(suite);                      \
+  srunner_run_all(suite_runner, CK_NORMAL);                  \
+  number_failed += srunner_ntests_failed(suite_runner);      \
+  srunner_free(suite_runner)
+
+
  int main(void)
  {
-    int number_failed;
-    Suite *s;
+    int number_failed = 0;
     SRunner *sr;
 
-    s = message_suite();
-    sr = srunner_create(s);
+    run_suite(sr, message_suite(), number_failed);
+    run_suite(sr, peer_suite(), number_failed);
 
-    srunner_run_all(sr, CK_NORMAL);
-    number_failed = srunner_ntests_failed(sr);
-    srunner_free(sr);
     return (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
  }

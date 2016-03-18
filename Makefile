@@ -5,7 +5,7 @@ LIBCHECK=$(shell pkg-config --cflags --libs check)
 LIBGC=$(shell pkg-config --cflags --libs bdw-gc)
 LIBMSGPACK=$(shell pkg-config --cflags --libs msgpack)
 LIBEV=$(shell pkg-config --cflags --libs libev)
-LIB_messaging_FILES=src/messaging/message.c
+LIB_messaging_FILES=src/messaging/message.c src/messaging/peer.c
 LIB_modules_FILES=src/modules/repairer.c src/modules/tcp_repairer.c
 
 build: src/main.o libmessaging.a libmodules.a

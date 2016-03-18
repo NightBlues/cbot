@@ -1,5 +1,6 @@
 #pragma once
 #include <stdint.h>
+#include <sys/queue.h>
 #include <msgpack.h>
 
 #include "../constants.h"
@@ -39,6 +40,7 @@ struct message {
     char * echo;
     message_data_identity identity;
   } data;
+  SIMPLEQ_ENTRY(message) _queue;
 };
 
 
