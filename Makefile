@@ -12,10 +12,15 @@ build: src/main.o libmessaging.a libmodules.a
 	$(CC) $^ ${LIBGC} ${LIBEV} ${LIBMSGPACK} -o cbot
 
 test: test-messaging
+	for testrunner in $^; do \
+		echo "Running $$testrunner..."; \
+		./$$testrunner; \
+	done
+	# $(foreach testrunner,$^,./$(testrunner))
+
 
 test-messaging: tests/check_messaging.o libmessaging.a
 	$(CC) $^ ${LIBCHECK} ${LIBGC} ${LIBEV} ${LIBMSGPACK} -o $@
-	./$@
 
 clean:
 	rm -rf *.o *.a cbot test-*

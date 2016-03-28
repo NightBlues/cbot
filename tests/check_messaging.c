@@ -163,13 +163,35 @@ START_TEST(test_peer_split_host) {
   char * host;
   int port;
 
-  ck_assert_int_eq(peer_split_host("localhost:8000", &host, &port), 0);
+  ck_assert_int_eq(peer_split_host("localhost:8000", &host, &port), RET_OK);
   ck_assert_int_eq(port, 8000);
   ck_assert(host != NULL);
   ck_assert_str_eq(host, "localhost");
-  ck_assert_int_eq(peer_split_host("*:8000", &host, &port), 0);
+  ck_assert_int_eq(peer_split_host("*:8000", &host, &port), RET_OK);
   ck_assert_int_eq(port, 8000);
   ck_assert(host == NULL);
+  ck_assert_int_eq(peer_split_host(":8000", &host, &port), RET_OK);
+  ck_assert_int_eq(port, 8000);
+  ck_assert(host == NULL);
+  ck_assert_int_eq(peer_split_host("8000", &host, &port), RET_OK);
+  ck_assert_int_eq(port, 8000);
+  ck_assert(host == NULL);
+  ck_assert_int_eq(peer_split_host("8000localhost", &host, &port), RET_PEER_RESOLVE_ERROR);
+  ck_assert_int_eq(peer_split_host("localhost", &host, &port), RET_PEER_RESOLVE_ERROR);
+  ck_assert_int_eq(peer_split_host("localhost:http", &host, &port), RET_PEER_RESOLVE_ERROR);
+}
+END_TEST
+
+
+START_TEST(test_peer_resolve) {
+  peer * p = peer_create("local", "127.0.0.1:8080");
+
+  ck_assert_int_eq(peer_resolve(p), RET_OK);
+  ck_assert(p->_addr != NULL);
+  char host[255], port[6];
+  getnameinfo(p->_addr->ai_addr, p->_addr->ai_addrlen, host, 255, port, 6, NI_NUMERICHOST | NI_NUMERICSERV);
+  ck_assert_str_eq("127.0.0.1", host);
+  ck_assert_str_eq("8080", port);
 }
 END_TEST
 
@@ -197,6 +219,7 @@ Suite * peer_suite(void) {
   tcase_add_test(tc_core, test_peer_requests);
   tcase_add_test(tc_core, test_peer_to_string);
   tcase_add_test(tc_core, test_peer_split_host);
+  tcase_add_test(tc_core, test_peer_resolve);
   suite_add_tcase(s, tc_core);
 
   return s;

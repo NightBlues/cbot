@@ -9,7 +9,8 @@
 #include "message.h"
 
 
-#define RET_PEER_RESOLVE_ERROR 40;
+#define RET_PEER_RESOLVE_ERROR 40
+#define RET_PEER_ADDR_INFO_ERROR 41
 
 
 typedef struct peer peer;
@@ -17,7 +18,7 @@ struct peer {
   char * name;
   char * host;
   int sock;
-  struct addrinfo ** _addr;
+  struct addrinfo * _addr;
   SIMPLEQ_HEAD(message_queue, message) requests;
 };
 

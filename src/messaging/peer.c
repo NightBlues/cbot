@@ -1,4 +1,4 @@
-#include <string.h>
+#include <stdlib.h>
 #include <gc.h>
 #include "peer.h"
 
@@ -31,25 +31,23 @@ int peer_pop_request(peer * p, message ** msg) {
 
 int peer_split_host(char * src_host, char ** host, int * port) {
   /* splitting host to host and port */
-  char * tmpbuf, * port_s;
+  char * tmpbuf, * port_s, * garbage;
   tmpbuf = GC_malloc(strlen(src_host));
   strcpy(tmpbuf, src_host);
+  /* TODO: USE strtok_r */
   *host = strtok(tmpbuf, ":");
   if(*host == NULL) {
     return RET_PEER_RESOLVE_ERROR;
   }
-  port_s = strtok(NULL, ":");
-  if(port_s == NULL) {
+  if((port_s = strtok(NULL, ":")) == NULL) {
     port_s = *host;
     *host = NULL;
-    *port = 0;
-  } else {
-    *port = atoi(port_s);
   }
-  if(strcmp(*host, "*") == 0) {
+  *port = strtol(port_s, &garbage, 10);
+  if(*host != NULL && strcmp(*host, "*") == 0) {
     *host = NULL;
   }
-  if(*port == 0) {
+  if(*port == 0 || !(garbage == NULL || strlen(garbage) == 0)) {
     return RET_PEER_RESOLVE_ERROR;
   }
 
@@ -60,8 +58,33 @@ int peer_resolve(peer * p){
   if(p->_addr != NULL) {
     return RET_OK;
   }
+  char * host, * port_s = GC_malloc(6);
+  int port;
+  struct addrinfo hint;
+  int ainfo_ret;
+  int ret_code = RET_OK;
 
-  return RET_OK;
+  if((ret_code = peer_split_host(p->host, &host, &port)) != 0) {
+    return ret_code;
+  }
+
+  sprintf(port_s, "%d", port);
+  memset(&hint, 0, sizeof(struct addrinfo));
+  hint.ai_family = AF_UNSPEC;
+  hint.ai_socktype = SOCK_STREAM;
+  hint.ai_flags = AI_PASSIVE; /* for NULLed host */
+  hint.ai_protocol = IPPROTO_TCP;
+  hint.ai_canonname = NULL;
+  hint.ai_addr = NULL;
+  hint.ai_next = NULL;
+
+  if((ainfo_ret = getaddrinfo(host, port_s, &hint, &p->_addr)) != 0) {
+    p->_addr = NULL;
+    printf("getaddrinfo: %s\n", gai_strerror(ainfo_ret));
+    ret_code = RET_PEER_ADDR_INFO_ERROR;
+  }
+
+  return ret_code;
 }
 
 
