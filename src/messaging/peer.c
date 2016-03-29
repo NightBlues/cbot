@@ -88,6 +88,40 @@ int peer_resolve(peer * p){
 }
 
 
+int peer_connect(peer * p) {
+  int ret_code = RET_OK;
+  if((ret_code = peer_resolve(p)) != 0) {
+    if(p->_addr != NULL) {
+      freeaddrinfo(p->_addr);
+      p->_addr = NULL;
+    }
+    return ret_code;
+  }
+
+  if(p->sock > 0) {
+    return RET_PEER_ALREADY_CONNECTED;
+  }
+
+  struct addrinfo * addr;
+  int sock;
+  for(addr = p->_addr; addr != NULL; addr = addr->ai_next) {
+    sock = socket(addr->ai_family, addr->ai_socktype,
+                  addr->ai_protocol);
+    if (sock == -1) {
+      continue;
+    }
+
+    if(connect(sock, addr->ai_addr, addr->ai_addrlen) != -1) {
+      p->sock = sock;
+      return RET_OK;
+    }
+
+  }
+
+  return RET_PEER_COULD_NOT_CONNECT;
+}
+
+
 char * peer_to_string(peer * p) {
   int size_ = strlen(p->name) + strlen(p->host) + 20;
   size_ = size_ > 79 ? 79 : size_;

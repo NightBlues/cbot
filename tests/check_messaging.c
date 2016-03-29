@@ -2,11 +2,16 @@
 #include <sys/socket.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <gc.h>
 #include <check.h>
 
 #include "../src/messaging/message.h"
 #include "../src/messaging/peer.h"
+
+#ifndef TEST_PORT
+#define TEST_PORT "60000"
+#endif
 
 void print(char const* buf, unsigned int len)
 {
@@ -196,6 +201,43 @@ START_TEST(test_peer_resolve) {
 END_TEST
 
 
+START_TEST(test_peer_connect) {
+  char host[100] = "127.0.0.1";
+  char port[6] = TEST_PORT;
+  char hostport[107];
+  sprintf(hostport, "%s:%s", host, port);
+  peer * p = peer_create("local", hostport);
+
+  /* creating server for test */
+  int server_sock = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP);
+  struct addrinfo * ainfo, hint;
+  memset(&hint, 0, sizeof(struct addrinfo));
+  hint.ai_family = AF_UNSPEC;
+  hint.ai_socktype = SOCK_STREAM;
+  hint.ai_flags = AI_PASSIVE; /* for NULLed host */
+  hint.ai_protocol = IPPROTO_TCP;
+  hint.ai_canonname = NULL;
+  hint.ai_addr = NULL;
+  hint.ai_next = NULL;
+  ck_assert_int_eq(getaddrinfo(host, port, &hint, &ainfo), 0);
+  ck_assert_int_eq(bind(server_sock, ainfo->ai_addr, ainfo->ai_addrlen), 0);
+  ck_assert_int_eq(listen(server_sock, 10), 0);
+
+  ck_assert_int_eq(peer_connect(p), 0);
+  int client_sock = accept(server_sock, NULL, NULL);
+  char * msg = "testmsg";
+  send(p->sock, msg, 8, MSG_DONTWAIT);
+  char buf[25];
+  recv(client_sock, buf, 8, MSG_DONTWAIT);
+  ck_assert_str_eq(buf, "testmsg");
+
+  close(p->sock);
+  close(client_sock);
+  close(server_sock);
+}
+END_TEST
+
+
 Suite * message_suite(void) {
   Suite * s;
   TCase * tc_core;
@@ -220,6 +262,7 @@ Suite * peer_suite(void) {
   tcase_add_test(tc_core, test_peer_to_string);
   tcase_add_test(tc_core, test_peer_split_host);
   tcase_add_test(tc_core, test_peer_resolve);
+  tcase_add_test(tc_core, test_peer_connect);
   suite_add_tcase(s, tc_core);
 
   return s;
